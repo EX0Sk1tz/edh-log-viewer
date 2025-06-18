@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>EDH Log Visualizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #121212;
+      color: #f1f1f1;
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 800px;
+      max-width: 95%;
+      background: #1e1e1e;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+
+    .turn-group {
+      margin-top: 2rem;
+    }
+
+    .turn-group h2 {
+      color: #64b5f6;
+      border-bottom: 1px solid #64b5f6;
+      padding-bottom: 0.3rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .card {
+      background-color: #2a2a2a;
+      margin: 0.6rem 0;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      transition: 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+
+    .title {
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .meta {
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .zone-hand        { color: #6ec6ff; }
+    .zone-battlefield { color: #81c784; }
+    .zone-graveyard   { color: #e57373; }
+    .zone-commandzone { color: #ba68c8; }
+    .zone-library     { color: #ffb74d; }
+    .zone-unknown     { color: #bdbdbd; }
+
+    .tapped-yes { color: #81c784; font-weight: bold; }
+    .tapped-no  { color: #e57373; font-weight: bold; }
+
+    #upload {
+      margin-bottom: 1.5rem;
+    }
+
+    .footer {
+      text-align: right;
+      margin-top: 3rem;
+      font-size: 0.8rem;
+      color: #888;
+    }
+
+    .footer a {
+      color: #64b5f6;
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>EDH Game Log Viewer</h1>
+    <input type="file" id="upload" accept=".json" />
+    <div id="output"></div>
+    <div id="card-tooltip" style="
+      display: none;
+      position: absolute;
+      background-color: #1e1e1e;
+      color: white;
+      padding: 1rem;
+      border: 1px solid #444;
+      border-radius: 6px;
+      z-index: 1000;
+      width: 300px;
+      font-size: 0.85rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.6);">
+      </div>
+
+    <div class="footer">
+      built by <strong>EX0DIA</strong> —
+      <a href="https://github.com/EX0Sk1tz" target="_blank">GitHub</a>
+    </div>
+  </div>
+
+  <script>
+    const zoneClass = z => `zone-${(z || 'unknown').toLowerCase()}`;
+
+    function createTextWithZone(text, zone) {
+      return `<span class="${zoneClass(zone)}">${text || '—'}</span>`;
+    }
+
+    document.getElementById('upload').addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const json = JSON.parse(e.target.result);
+        const output = document.getElementById('output');
+        output.innerHTML = "";
+
+        json.forEach((turnActions, turnIndex) => {
+          const turnDiv = document.createElement('div');
+          turnDiv.className = 'turn-group';
+          turnDiv.innerHTML = `<h2>Turn ${turnIndex + 1}</h2>`;
+
+          turnActions.forEach(action => {
+            const from = action.fromZone;
+            const to = action.toZone;
+            const tapped = action.tapped;
+            const isTapOnly = !from && !to && action.zone === 'battlefield';
+
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'card';
+
+            let meta = '';
+            if (isTapOnly) {
+              meta += `<div><strong>Action:</strong> ${tapped ? '<span class="tapped-yes">Tapped</span>' : '<span class="tapped-no">Untapped</span>'}</div>`;
+            } else {
+              meta += `<div><strong>From:</strong> ${createTextWithZone(from, from)} → <strong>To:</strong> ${createTextWithZone(to, to)}</div>`;
+              meta += `<div><strong>Action:</strong> ${tapped ? '<span class="tapped-yes">Tapped</span>' : '<span class="tapped-no">Untapped</span>'}</div>`;
+            }
+
+            cardDiv.innerHTML = `
+              <div class="title" data-card-name="${action.name}">${action.name}</div>
+              <div class="meta">${meta}</div>
+            `;
+            const titleEl = cardDiv.querySelector('.title');
+            attachHoverTooltip(titleEl, action.name);
+            turnDiv.appendChild(cardDiv);
+          });
+
+          output.appendChild(turnDiv);
+        });
+      };
+      reader.readAsText(file);
+    });
+
+    const cardCache = {};
+
+    async function fetchCardData(cardName) {
+      if (cardCache[cardName]) return cardCache[cardName]; // return cached
+
+      try {
+        const res = await fetch(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cardName)}`);
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        cardCache[cardName] = data; // cache it
+        return data;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function attachHoverTooltip(element, cardName) {
+      const tooltip = document.getElementById('card-tooltip');
+
+      element.addEventListener('mouseenter', async (e) => {
+        tooltip.innerHTML = "Loading...";
+        tooltip.style.display = "block";
+        const cardData = await fetchCardData(cardName);
+        if (!cardData) {
+          tooltip.innerHTML = "Card not found.";
+          return;
+        }
+
+        tooltip.innerHTML = `
+          <img src="${cardData.image_uris?.normal || ''}" style="width: 100%; border-radius: 4px;" />
+        `;
+      });
+
+      element.addEventListener('mousemove', (e) => {
+        tooltip.style.left = (e.pageX + 20) + "px";
+        tooltip.style.top = (e.pageY + 20) + "px";
+      });
+
+      element.addEventListener('mouseleave', () => {
+        tooltip.style.display = "none";
+      });
+    }
+  </script>
+</body>
+</html>

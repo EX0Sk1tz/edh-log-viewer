@@ -1,6 +1,6 @@
 # Archidekt Playtester Log Viewer
 
-A simple, modern web tool for visually displaying Commander / EDH game logs exported from [Archidekt](https://archidekt.com).
+A simple, modern web tool for visually displaying game logs exported from [Archidekt](https://archidekt.com).
 
 ![Screenshot](https://github.com/user-attachments/assets/f8a6ec05-12b9-423e-91ae-b528714de983)
 

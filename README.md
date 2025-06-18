@@ -2,7 +2,7 @@
 
 A simple, modern web tool for visually displaying game logs exported from [Archidekt](https://archidekt.com).
 
-![Screenshot](https://github.com/user-attachments/assets/f8a6ec05-12b9-423e-91ae-b528714de983)
+![Screenshot](https://github.com/user-attachments/assets/d4afccbd-70c0-4c8f-aaf5-77033f4b1da6)
 
 ## 🔧 Features
 

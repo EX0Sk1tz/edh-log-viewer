@@ -8,7 +8,7 @@ A simple, modern web tool for visually displaying game logs exported from [Archi
 
 - 💡 JSON upload directly from Archidekt export
 - 📦 Actions grouped by turn
-- 🎨 Color-coded zones, tap status, and symbols
+- 🎨 Color-coded zones and tap status
 - 🧠 Live hover tooltips with card data and image via Scryfall API
 - 📊 Foundation for future features like mana evaluation, type statistics, or deck analysis
 

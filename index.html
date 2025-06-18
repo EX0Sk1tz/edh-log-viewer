@@ -147,6 +147,7 @@
             const from = action.fromZone;
             const to = action.toZone;
             const tapped = action.tapped;
+
             const isTapOnly = !from && !to && action.zone === 'battlefield';
 
             const cardDiv = document.createElement('div');
@@ -156,8 +157,9 @@
             if (isTapOnly) {
               meta += `<div><strong>Action:</strong> ${tapped ? '<span class="tapped-yes">Tapped</span>' : '<span class="tapped-no">Untapped</span>'}</div>`;
             } else {
-              meta += `<div><strong>From:</strong> ${createTextWithZone(from, from)} → <strong>To:</strong> ${createTextWithZone(to, to)}</div>`;
-              meta += `<div><strong>Action:</strong> ${tapped ? '<span class="tapped-yes">Tapped</span>' : '<span class="tapped-no">Untapped</span>'}</div>`;
+              if (from || to) {
+                meta += `<div><strong>From:</strong> ${createTextWithZone(from, from)} → <strong>To:</strong> ${createTextWithZone(to, to)}</div>`;
+              }
             }
 
             cardDiv.innerHTML = `

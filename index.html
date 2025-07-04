@@ -79,6 +79,49 @@
       margin-bottom: 1.5rem;
     }
 
+    .counter-line {
+      font-size: 0.9rem;
+      line-height: 1.4;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .counter-line-entry {
+      display: flex;
+      gap: 0.5rem;
+      align-items: baseline;
+    }
+
+    .counter-type {
+      font-weight: 600;
+      color: #ccc;
+    }
+
+    .counter-current {
+      color: #f1f1f1;
+    }
+
+    .counter-positive {
+      color: #81c784;
+      font-weight: bold;
+    }
+
+    .counter-negative {
+      color: #e57373;
+      font-weight: bold;
+    }
+
+    .drawn {
+      color: rgb(13, 195, 22);
+      font-weight: bold;
+    }
+
+    .cast {
+      color: #81c784;
+      font-weight: bold;
+    }
+
     .footer {
       text-align: right;
       margin-top: 3rem;
@@ -123,6 +166,8 @@
 
   <script>
     const zoneClass = z => `zone-${(z || 'unknown').toLowerCase()}`;
+    const previousCounters = new Map();
+    const previousActions = new Map();
 
     function createTextWithZone(text, zone) {
       return `<span class="${zoneClass(zone)}">${text || '—'}</span>`;
@@ -147,28 +192,89 @@
             const from = action.fromZone;
             const to = action.toZone;
             const tapped = action.tapped;
-
             const isTapOnly = !from && !to && action.zone === 'battlefield';
+
+            const strippedAction = {
+              fromZone: action.fromZone,
+              toZone: action.toZone,
+              tapped: action.tapped,
+              zone: action.zone
+            };
+
+            const prevAction = previousActions.get(action.id);
+            const prevCounters = previousCounters.get(action.id) || {};
 
             const cardDiv = document.createElement('div');
             cardDiv.className = 'card';
 
             let meta = '';
-            if (isTapOnly) {
-              meta += `<div><strong>Action:</strong> ${tapped ? '<span class="tapped-yes">Tapped</span>' : '<span class="tapped-no">Untapped</span>'}</div>`;
-            } else {
-              if (from || to) {
-                meta += `<div><strong>From:</strong> ${createTextWithZone(from, from)} → <strong>To:</strong> ${createTextWithZone(to, to)}</div>`;
+
+            const hasActionChanged = JSON.stringify(prevAction) !== JSON.stringify(strippedAction);
+
+            // Counter-Differenzen berechnen
+            let counterDiffs = [];
+            if (action.counters && Object.keys(action.counters).length > 0) {
+              for (const [type, current] of Object.entries(action.counters)) {
+                const previous = prevCounters[type]?.count || 0;
+                const delta = current.count - previous;
+                if (delta !== 0) {
+                  const sign = delta > 0 ? '+' : '';
+                  const diffClass = delta > 0 ? 'counter-positive' : 'counter-negative';
+                  counterDiffs.push(`
+                    <div class="counter-line-entry">
+                      <span class="counter-type">${type}:</span>
+                      <span class="counter-current">${current.count}</span>
+                      <span class="${diffClass}">(${sign}${delta})</span>
+                    </div>
+                  `);
+                }
               }
             }
 
-            cardDiv.innerHTML = `
-              <div class="title" data-card-name="${action.name}">${action.name}</div>
-              <div class="meta">${meta}</div>
-            `;
-            const titleEl = cardDiv.querySelector('.title');
-            attachHoverTooltip(titleEl, action.name);
-            turnDiv.appendChild(cardDiv);
+            const showOnlyCounterChange = !hasActionChanged && counterDiffs.length > 0;
+
+            if (!showOnlyCounterChange) {
+              if (from === 'library' && to === 'hand') {
+                meta += `<div><strong>Action:</strong> <span class="drawn">Drawn</span></div>`;
+              } else if (from === 'hand' && to === 'battlefield') {
+                meta += `<div><strong>Action:</strong> <span class="cast">Played / Cast</span></div>`;
+              } else if (from === 'library' && to === 'battlefield') {
+                meta += `<div><strong>Action:</strong> <span class="cast">Tutored</span></div>`;
+              } else if (isTapOnly) {
+                meta += `<div><strong>Action:</strong> ${tapped ? '<span class="tapped-yes">Tapped</span>' : '<span class="tapped-no">Untapped</span>'}</div>`;
+              } else {
+                if (from || to) {
+                  meta += `<div><strong>From:</strong> ${createTextWithZone(from, from)} → <strong>To:</strong> ${createTextWithZone(to, to)}</div>`;
+                }
+              }
+
+              if (counterDiffs.length > 0) {
+                meta += `<div class="counter-line">${counterDiffs.join('')}</div>`;
+              }
+
+              cardDiv.innerHTML = `
+                <div class="title" data-card-name="${action.name}">${action.name}</div>
+                <div class="meta">${meta}</div>
+              `;
+              const titleEl = cardDiv.querySelector('.title');
+              attachHoverTooltip(titleEl, action.name);
+              turnDiv.appendChild(cardDiv);
+            } else {
+              // Nur Counter-Differenz anzeigen
+              cardDiv.innerHTML = `
+                <div class="meta">
+                  <div class="title" data-card-name="${action.name}">${action.name}</div>
+                  <div class="counter-line">${counterDiffs.join('')}</div>
+                </div>
+              `;
+              const titleEl = cardDiv.querySelector('.title');
+              attachHoverTooltip(titleEl, action.name);
+              turnDiv.appendChild(cardDiv);
+            }
+
+            // Update States
+            previousCounters.set(action.id, JSON.parse(JSON.stringify(action.counters || {})));
+            previousActions.set(action.id, strippedAction);
           });
 
           output.appendChild(turnDiv);

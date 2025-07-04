@@ -28,8 +28,7 @@ A simple, modern web tool for visually displaying game logs exported from [Archi
 
 ## 🧑‍💻 Author
 
-[EX0DIA]  
-[https://github.com/EX0Sk1tz](https://github.com/EX0Sk1tz)
+[EX0DIA](https://github.com/EX0Sk1tz)
 
 ---
 
